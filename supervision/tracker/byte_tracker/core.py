@@ -33,14 +33,13 @@ class IdCounter:
 
 
 class STrack:
-    shared_kalman = KalmanFilter()
-
     def __init__(
         self,
         tlwh,
         score,
         class_ids,
         minimum_consecutive_frames,
+        shared_kalman: KalmanFilter,
         internal_id_counter: IdCounter,
         external_id_counter: IdCounter,
     ):
@@ -51,6 +50,7 @@ class STrack:
 
         self._tlwh = np.asarray(tlwh, dtype=np.float32)
         self.kalman_filter = None
+        self.shared_kalman = shared_kalman
         self.mean, self.covariance = None, None
         self.is_activated = False
 
@@ -74,7 +74,7 @@ class STrack:
         )
 
     @staticmethod
-    def multi_predict(stracks):
+    def multi_predict(stracks, shared_kalman: KalmanFilter):
         if len(stracks) > 0:
             multi_mean = []
             multi_covariance = []
@@ -84,7 +84,7 @@ class STrack:
                 if st.state != TrackState.Tracked:
                     multi_mean[i][7] = 0
 
-            multi_mean, multi_covariance = STrack.shared_kalman.multi_predict(
+            multi_mean, multi_covariance = shared_kalman.multi_predict(
                 np.asarray(multi_mean), np.asarray(multi_covariance)
             )
             for i, (mean, cov) in enumerate(zip(multi_mean, multi_covariance)):
@@ -239,6 +239,7 @@ class ByteTrack:
         self.max_time_lost = int(frame_rate / 30.0 * lost_track_buffer)
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.kalman_filter = KalmanFilter()
+        self.shared_kalman = KalmanFilter()
 
         self.tracked_tracks: List[STrack] = []
         self.lost_tracks: List[STrack] = []
@@ -377,6 +378,7 @@ class ByteTrack:
                     s,
                     c,
                     self.minimum_consecutive_frames,
+                    self.shared_kalman,
                     self.internal_id_counter,
                     self.external_id_counter,
                 )
@@ -398,7 +400,7 @@ class ByteTrack:
         """ Step 2: First association, with high score detection boxes"""
         strack_pool = joint_tracks(tracked_stracks, self.lost_tracks)
         # Predict the current location with KF
-        STrack.multi_predict(strack_pool)
+        STrack.multi_predict(strack_pool, self.shared_kalman)
         dists = matching.iou_distance(strack_pool, detections)
 
         dists = matching.fuse_score(dists, detections)
@@ -426,6 +428,7 @@ class ByteTrack:
                     s,
                     c,
                     self.minimum_consecutive_frames,
+                    self.shared_kalman,
                     self.internal_id_counter,
                     self.external_id_counter,
                 )
