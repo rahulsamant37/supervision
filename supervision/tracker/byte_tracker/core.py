@@ -189,14 +189,16 @@ class ByteTrack:
             detections = [
                 STrack(
                     STrack.tlbr_to_tlwh(tlbr),
-                    scores,
-                    classes,
+                    score_keep,
+                    class_id_keep,
                     self.minimum_consecutive_frames,
                     self.shared_kalman,
                     self.internal_id_counter,
                     self.external_id_counter,
                 )
-                for (tlbr, scores, classes) in zip(dets, scores_keep, class_ids_keep)
+                for (tlbr, score_keep, class_id_keep) in zip(
+                    dets, scores_keep, class_ids_keep
+                )
             ]
         else:
             detections = []
@@ -239,14 +241,16 @@ class ByteTrack:
             detections_second = [
                 STrack(
                     STrack.tlbr_to_tlwh(tlbr),
-                    s,
-                    c,
+                    score_second,
+                    class_id_second,
                     self.minimum_consecutive_frames,
                     self.shared_kalman,
                     self.internal_id_counter,
                     self.external_id_counter,
                 )
-                for (tlbr, s, c) in zip(dets_second, scores_second, class_ids_second)
+                for (tlbr, score_second, class_id_second) in zip(
+                    dets_second, scores_second, class_ids_second
+                )
             ]
         else:
             detections_second = []
